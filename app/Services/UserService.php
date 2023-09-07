@@ -3,12 +3,19 @@
 namespace App\Services;
 
 use App\Models\User;
+use App\Services\EmailService\EmailService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Validator;
 
 class UserService{
+    protected EmailService $emailService;
+
+    public function __construct(EmailService $emailService){
+        $this->emailService = $emailService;
+    }
+
     public function storeUserInDB(Request $request): JsonResponse{
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
@@ -35,6 +42,18 @@ class UserService{
 
         $user = User::query()->create($request->all());
 
+        $this->sendUserWelcomeEmail($user->id);
+
         return response()->json($user, 201);
+    }
+
+    protected function sendUserWelcomeEmail($userId): void {
+        $user = User::query()->find($userId);
+
+        $this->emailService->sendTextEmail($user->email, "Welcome", "Hope you will have a good time");
+
+        $user->is_welcome_email_sent = true;
+
+        $user->save();
     }
 }
